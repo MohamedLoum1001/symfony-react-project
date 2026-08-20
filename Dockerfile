@@ -14,11 +14,11 @@ RUN apt-get update && apt-get install -y \
 # Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Configurer Apache pour pointer vers public/
+# Configurer Apache pour pointer vers public/ et activer rewrite + headers
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-RUN a2enmod rewrite
+RUN a2enmod rewrite headers
 
 # Copier le code du projet
 WORKDIR /var/www/html
@@ -28,7 +28,7 @@ COPY . .
 ENV APP_ENV=prod
 RUN composer install --no-dev --optimize-autoloader
 
-# Compiler les assets Webpack Encore (génère public/build/entrypoints.json)
+# Compiler les assets
 RUN npm install && npm run build
 
 RUN php bin/console cache:clear --env=prod
