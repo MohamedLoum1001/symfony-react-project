@@ -1,7 +1,11 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Redirection standard vers le contrôleur frontal Symfony (index.php)
+    # 1. Répondre immédiatement 204 aux requêtes OPTIONS (Preflight CORS)
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=204,L]
+
+    # 2. Redirection Symfony standard vers public/index.php
     RewriteCond %{REQUEST_URI}::$0 ^(/.+)/(.*)::\2$
     RewriteRule .* - [E=BASE:%1]
 

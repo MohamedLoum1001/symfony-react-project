@@ -15,13 +15,9 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/users', name: 'api_users_')]
 class ApiUserController extends AbstractController
 {
-    #[Route('', name: 'list', methods: ['GET', 'OPTIONS'])]
-    public function list(UserRepository $userRepository, UserService $userService, Request $request): JsonResponse
+    #[Route('', name: 'list', methods: ['GET'])]
+    public function list(UserRepository $userRepository, UserService $userService): JsonResponse
     {
-        if ($request->isMethod('OPTIONS')) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-        }
-
         $users = $userRepository->findAll();
 
         $data = array_map(function (User $user) use ($userService) {
@@ -34,16 +30,12 @@ class ApiUserController extends AbstractController
             ];
         }, $users);
 
-        return $this->json($data);
+        return $this->json($data, Response::HTTP_OK);
     }
 
-    #[Route('', name: 'create', methods: ['POST', 'OPTIONS'])]
+    #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request, EntityManagerInterface $em, UserService $userService): JsonResponse
     {
-        if ($request->isMethod('OPTIONS')) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
-        }
-
         $payload = json_decode($request->getContent(), true);
 
         if (empty($payload['birthDate'])) {
@@ -69,23 +61,25 @@ class ApiUserController extends AbstractController
         }
     }
 
-    #[Route('/{id}', name: 'show', methods: ['GET', 'OPTIONS'])]
-    public function show(User $user, UserService $userService, Request $request): JsonResponse
+    #[Route('/{id}', name: 'show', methods: ['GET'])]
+    public function show(?User $user, UserService $userService): JsonResponse
     {
-        if ($request->isMethod('OPTIONS')) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
         $userService->calculateAge($user);
 
         $possessions = [];
-        foreach ($user->getPossessions() as $possession) {
-            $possessions[] = [
-                'id' => $possession->getId(),
-                'nom' => $possession->getNom(),
-                'valeur' => $possession->getValeur(),
-                'type' => $possession->getType(),
-            ];
+        if (method_exists($user, 'getPossessions') && $user->getPossessions()) {
+            foreach ($user->getPossessions() as $possession) {
+                $possessions[] = [
+                    'id' => $possession->getId(),
+                    'nom' => $possession->getNom(),
+                    'valeur' => $possession->getValeur(),
+                    'type' => $possession->getType(),
+                ];
+            }
         }
 
         return $this->json([
@@ -93,14 +87,14 @@ class ApiUserController extends AbstractController
             'birthDate' => $user->getBirthDate() ? $user->getBirthDate()->format('d/m/Y') : null,
             'age' => $user->getAge(),
             'possessions' => $possessions,
-        ]);
+        ], Response::HTTP_OK);
     }
 
-    #[Route('/{id}', name: 'delete', methods: ['DELETE', 'OPTIONS'])]
-    public function delete(User $user, EntityManagerInterface $em, Request $request): JsonResponse
+    #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    public function delete(?User $user, EntityManagerInterface $em): JsonResponse
     {
-        if ($request->isMethod('OPTIONS')) {
-            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
         $em->remove($user);
