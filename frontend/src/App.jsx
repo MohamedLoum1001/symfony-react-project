@@ -16,7 +16,11 @@ function App() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/api/users`);
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
+      });
       if (!response.ok) {
         throw new Error('Erreur réseau lors de la récupération des données');
       }
@@ -42,6 +46,9 @@ function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
         method: 'DELETE',
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+        },
       });
 
       if (response.ok) {

@@ -15,9 +15,13 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/api/users', name: 'api_users_')]
 class ApiUserController extends AbstractController
 {
-    #[Route('', name: 'list', methods: ['GET'])]
-    public function list(UserRepository $userRepository, UserService $userService): JsonResponse
+    #[Route('', name: 'list', methods: ['GET', 'OPTIONS'])]
+    public function list(UserRepository $userRepository, UserService $userService, Request $request): JsonResponse
     {
+        if ($request->isMethod('OPTIONS')) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
         $users = $userRepository->findAll();
 
         $data = array_map(function (User $user) use ($userService) {
@@ -33,33 +37,45 @@ class ApiUserController extends AbstractController
         return $this->json($data);
     }
 
-    #[Route('', name: 'create', methods: ['POST'])]
+    #[Route('', name: 'create', methods: ['POST', 'OPTIONS'])]
     public function create(Request $request, EntityManagerInterface $em, UserService $userService): JsonResponse
     {
+        if ($request->isMethod('OPTIONS')) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
         $payload = json_decode($request->getContent(), true);
 
         if (empty($payload['birthDate'])) {
-            return $this->json(['error' => 'La date de naissance est requise'], Response::HTTP_BAD_REQUEST);
+            return $this->json(['error' => 'La date de naissance est obligatoire.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = new User();
-        $user->setBirthDate(new \DateTime($payload['birthDate']));
+        try {
+            $user = new User();
+            $user->setBirthDate(new \DateTime($payload['birthDate']));
 
-        $em->persist($user);
-        $em->flush();
+            $em->persist($user);
+            $em->flush();
 
-        $userService->calculateAge($user);
+            $userService->calculateAge($user);
 
-        return $this->json([
-            'id' => $user->getId(),
-            'birthDate' => $user->getBirthDate()->format('d/m/Y'),
-            'age' => $user->getAge(),
-        ], Response::HTTP_CREATED);
+            return $this->json([
+                'id' => $user->getId(),
+                'birthDate' => $user->getBirthDate()->format('d/m/Y'),
+                'age' => $user->getAge(),
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $e) {
+            return $this->json(['error' => 'Format de date invalide.'], Response::HTTP_BAD_REQUEST);
+        }
     }
 
-    #[Route('/{id}', name: 'show', methods: ['GET'])]
-    public function show(User $user, UserService $userService): JsonResponse
+    #[Route('/{id}', name: 'show', methods: ['GET', 'OPTIONS'])]
+    public function show(User $user, UserService $userService, Request $request): JsonResponse
     {
+        if ($request->isMethod('OPTIONS')) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
         $userService->calculateAge($user);
 
         $possessions = [];
@@ -80,12 +96,16 @@ class ApiUserController extends AbstractController
         ]);
     }
 
-    #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
-    public function delete(User $user, EntityManagerInterface $em): JsonResponse
+    #[Route('/{id}', name: 'delete', methods: ['DELETE', 'OPTIONS'])]
+    public function delete(User $user, EntityManagerInterface $em, Request $request): JsonResponse
     {
+        if ($request->isMethod('OPTIONS')) {
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        }
+
         $em->remove($user);
         $em->flush();
 
-        return $this->json(['message' => 'Utilisateur supprimé avec succès'], Response::HTTP_OK);
+        return $this->json(['message' => 'Utilisateur supprimé avec succès.'], Response::HTTP_OK);
     }
 }

@@ -5,15 +5,30 @@ import UserTable from './components/UserTable';
 import UserDetail from './components/UserDetail';
 import AddUserModal from './components/AddUserModal';
 
+// En local avec Symfony Webpack Encore, l'URL relative suffit
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
 const App = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // Charger la liste des utilisateurs
     const fetchUsers = async () => {
         try {
-            const response = await fetch('/api/users');
+            setLoading(true);
+            const response = await fetch(`${API_BASE_URL}/api/users`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Erreur réseau : ${response.status}`);
+            }
+
             const data = await response.json();
             setUsers(data);
         } catch (error) {
@@ -27,24 +42,32 @@ const App = () => {
         fetchUsers();
     }, []);
 
+    // Supprimer un utilisateur
     const handleDelete = async (id) => {
         if (!window.confirm('Voulez-vous vraiment supprimer cet utilisateur ?')) {
             return;
         }
 
         try {
-            const response = await fetch(`/api/users/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/api/users/${id}`, {
                 method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                },
             });
 
             if (response.ok) {
                 setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id));
+            } else {
+                console.error('Erreur lors de la suppression de l’utilisateur');
             }
         } catch (error) {
             console.error('Erreur lors de la suppression :', error);
         }
     };
 
+    // Ajouter un nouvel utilisateur
     const handleUserAdded = (newUser) => {
         setUsers((prevUsers) => [...prevUsers, newUser]);
     };
@@ -56,6 +79,7 @@ const App = () => {
             {selectedUserId ? (
                 <UserDetail
                     userId={selectedUserId}
+                    apiBaseUrl={API_BASE_URL}
                     onBack={() => setSelectedUserId(null)}
                 />
             ) : (
@@ -70,7 +94,7 @@ const App = () => {
                                 padding: '10px 18px',
                                 borderRadius: '4px',
                                 cursor: 'pointer',
-                                fontWeight: 'bold'
+                                fontWeight: 'bold',
                             }}
                         >
                             + Nouvel utilisateur
@@ -86,6 +110,7 @@ const App = () => {
 
                     <AddUserModal
                         isOpen={isModalOpen}
+                        apiBaseUrl={API_BASE_URL}
                         onClose={() => setIsModalOpen(false)}
                         onUserAdded={handleUserAdded}
                     />

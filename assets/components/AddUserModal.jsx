@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
+const AddUserModal = ({ isOpen, onClose, onUserAdded, apiBaseUrl = 'http://127.0.0.1:8000' }) => {
     const [birthDate, setBirthDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -13,15 +13,20 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('/api/users', {
+            const baseUrl = apiBaseUrl || 'http://127.0.0.1:8000';
+            const response = await fetch(`${baseUrl}/api/users`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                },
                 body: JSON.stringify({ birthDate }),
             });
 
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Erreur lors de la création');
+                const text = await response.text();
+                throw new Error(`Erreur ${response.status} : ${text}`);
             }
 
             const newUser = await response.json();
@@ -29,6 +34,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             setBirthDate('');
             onClose();
         } catch (err) {
+            console.error(err);
             setError(err.message);
         } finally {
             setIsSubmitting(false);
