@@ -1,11 +1,14 @@
 FROM php:8.2-apache
 
-# Installer les dépendances système et extensions PHP nécessaires
+# Installer les dépendances système, extensions PHP et Node.js
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
     libicu-dev \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && docker-php-ext-install pdo pdo_mysql intl zip opcache
 
 # Installer Composer
@@ -24,6 +27,10 @@ COPY . .
 # Installer les dépendances PHP et vider le cache
 ENV APP_ENV=prod
 RUN composer install --no-dev --optimize-autoloader
+
+# Compiler les assets Webpack Encore (génère public/build/entrypoints.json)
+RUN npm install && npm run build
+
 RUN php bin/console cache:clear --env=prod
 
 # Fixer les permissions
